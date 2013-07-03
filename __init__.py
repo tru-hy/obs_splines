@@ -55,8 +55,6 @@ def smooth1d_grid_l2_l2_weighted(y, weights=None, smoothing=1.0, crit=1e-3, max_
 
 	
 	return z
-	#if np.all(valid):
-	#	return idct(diag*dct(y, norm='ortho'), norm='ortho')
 	
 	
 def shrink(v, invs):
@@ -96,4 +94,44 @@ def smooth1d_grid_l1_l2(y, smoothing=1.0, crit=1e-3, max_iters=1000):
 	
 	return z
 
+def smooth1d_grid_l1_l2_missing(y, smoothing=1.0, crit=1e-3, max_iters=1000):
+	"""
+	Based on http://arxiv.org/abs/1208.2292
+	Fixed N_i = 1
+	"""
+	n = len(y)
+	d = np.zeros(n)
+	b = np.zeros(n)
+	
+	valid = np.isfinite(y)
+	invalid = ~valid
+	rng = np.arange(n)
+	valid_y = y.copy()
+	valid_y[invalid] = interp1d(rng[valid], valid_y[valid])(rng[invalid])
+	
+	z = valid_y
+	prev_z = None
+	
+	diag = get_mangled_diff_diagonal(n, smoothing)
+	n = float(n)
+	for k in range(max_iters):
+		# Equivalent, but avoid recalculation of the
+		# diff diagonal eigenvaluething
+		#z = smooth1d_grid_l2_l2(d + y - b, smoothing)
+		z = idct(diag*dct(d + valid_y - b, norm='ortho'), norm='ortho')
+
+		d[valid] = shrink(z[valid] - y[valid] + b[valid], 1.0/(smoothing))
+		b[valid] += z[valid] - y[valid] - d[valid]
+		
+		if prev_z is None:
+			prev_z = z
+			continue
+		
+		change = np.max(np.abs((z - prev_z)))
+		
+		prev_z = z
+		if change < crit:
+			break
+	
+	return z
 	

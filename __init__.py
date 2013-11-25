@@ -67,6 +67,8 @@ def smooth1d_grid_l1_l2(y, smoothing=1.0, crit=1e-3, max_iters=1000):
 	Fixed N_i = 1
 	"""
 	n = len(y)
+	if n == 0:
+		return np.array([])
 	d = np.zeros(n)
 	b = np.zeros(n)
 	prev_z = None
